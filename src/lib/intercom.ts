@@ -21,6 +21,9 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
   }
 
   const data = await response.json();
+  if (!data.access_token) {
+    throw new Error("Token exchange failed: no access_token in response");
+  }
   return data.access_token;
 }
 
