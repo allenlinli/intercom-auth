@@ -169,6 +169,8 @@ The free ngrok tier assigns a random URL each session. When it changes:
 
 Click the **Edit** button on the Authentication page to enable OAuth and add redirect URLs.
 
+> **Known Intercom bug:** After clicking Edit, the page may not respond or appear broken. Refresh the page in your browser — the Edit form should then load correctly.
+
 ### Hydration mismatch warning
 
 If you see a hydration error mentioning `data-new-gr-c-s-check-loaded`, it's caused by the Grammarly browser extension — not a code bug. Safe to ignore.
