@@ -1,36 +1,172 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Intercom OAuth Demo
 
-## Getting Started
+A Next.js demo app implementing Intercom's OAuth authorization code flow. Built as a learning reference for integrating Intercom OAuth into web applications.
 
-First, run the development server:
+## How It Works
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+User clicks "Connect with Intercom"
+        |
+        v
+[Next.js Server] ──redirect──> [Intercom OAuth Page]
+                                       |
+                                User authorizes
+                                       |
+                                       v
+[Next.js Server] <──callback── [Intercom redirects with ?code=...]
+        |
+        v
+[Next.js Server] ──POST──> [Intercom Token API]
+        |                    returns access_token
+        v
+  Store token in HTTP-only cookie
+        |
+        v
+  Dashboard shows admin info via /api/me proxy
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. An Intercom account with a **paid workspace**
+2. A development app created at [developer.intercom.com](https://developers.intercom.com)
+3. [Node.js](https://nodejs.org/) 18+
+4. [ngrok](https://ngrok.com/) for local HTTPS tunneling (required for OAuth)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/allenlinli/intercom-auth.git
+cd intercom-auth
+pnpm install
+```
+
+### 2. Configure Intercom Developer Hub
+
+1. Go to [developer.intercom.com](https://developers.intercom.com) and select your app
+2. Navigate to **Configure > Authentication**
+3. Click **Edit** and enable **Use OAuth**
+4. Add a redirect URL (you'll update this with your ngrok URL later):
+   ```
+   https://YOUR-NGROK-SUBDOMAIN.ngrok-free.app/api/auth/callback
+   ```
+5. Go to **Configure > Basic Information** and note your **Client ID** and **Client Secret**
+
+### 3. Set up environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+```
+INTERCOM_CLIENT_ID=your-client-id
+INTERCOM_CLIENT_SECRET=your-client-secret
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### 4. Start ngrok
+
+Intercom **requires HTTPS** for redirect URLs. The OAuth flow will not work on plain `http://localhost:3000`. You need an HTTPS tunnel:
+
+```bash
+ngrok http 3000
+```
+
+ngrok will display a forwarding URL like:
+
+```
+Forwarding  https://abcd-1234.ngrok-free.app -> http://localhost:3000
+```
+
+### 5. Update URLs with ngrok address
+
+Every time ngrok restarts (free tier), you get a **new URL**. You must update **two places**:
+
+**a) `.env.local`** — update `NEXT_PUBLIC_APP_URL`:
+
+```
+NEXT_PUBLIC_APP_URL=https://abcd-1234.ngrok-free.app
+```
+
+**b) Intercom Developer Hub** — update the redirect URL:
+
+```
+https://abcd-1234.ngrok-free.app/api/auth/callback
+```
+
+> **Tip:** If you have a paid ngrok plan, you can use a [custom domain](https://ngrok.com/docs/guides/custom-domains/) to avoid updating URLs every time.
+
+### 6. Start the dev server
+
+```bash
+pnpm dev
+```
+
+Open your **ngrok URL** (not localhost) in the browser to test the full OAuth flow.
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                    # Home page with "Connect" button
+│   ├── layout.tsx                  # Root layout
+│   ├── dashboard/
+│   │   └── page.tsx                # Dashboard with admin info
+│   └── api/
+│       ├── auth/
+│       │   ├── intercom/route.ts   # OAuth initiation (generates state, redirects)
+│       │   ├── callback/route.ts   # OAuth callback (validates state, exchanges code)
+│       │   └── logout/route.ts     # Clears token cookie
+│       └── me/route.ts             # Proxies /me API call (token never exposed to client)
+├── lib/
+│   ├── intercom.ts                 # Intercom API helpers
+│   └── __tests__/
+│       └── intercom.test.ts        # Unit tests
+```
+
+## Security
+
+- **CSRF protection**: Random `state` parameter validated on every callback
+- **HTTP-only cookies**: Access token stored server-side only, never exposed to JavaScript
+- **API proxy**: All Intercom API calls go through `/api/me`, token never sent to the browser
+- **Client secret**: Kept server-side only in environment variables
+
+## Testing
+
+```bash
+pnpm test
+```
+
+## Common Issues
+
+### ngrok URL changed / "endpoint is offline"
+
+The free ngrok tier assigns a random URL each session. When it changes:
+1. Stop the dev server
+2. Update `NEXT_PUBLIC_APP_URL` in `.env.local` with the new ngrok URL
+3. Update the redirect URL in **Intercom Developer Hub > Configure > Authentication**
+4. Restart the dev server
+
+### "OAuth is not configured" in Developer Hub
+
+Click the **Edit** button on the Authentication page to enable OAuth and add redirect URLs.
+
+### Hydration mismatch warning
+
+If you see a hydration error mentioning `data-new-gr-c-s-check-loaded`, it's caused by the Grammarly browser extension — not a code bug. Safe to ignore.
+
+## Tech Stack
+
+- [Next.js](https://nextjs.org/) 16 (App Router)
+- [Tailwind CSS](https://tailwindcss.com/) v4
+- [Vitest](https://vitest.dev/) for testing
+- [TypeScript](https://www.typescriptlang.org/)
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Intercom OAuth Documentation](https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth)
+- [docs/intercom-oauth-guide.md](docs/intercom-oauth-guide.md) — Detailed OAuth implementation guide
