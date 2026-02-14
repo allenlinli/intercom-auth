@@ -97,7 +97,21 @@ NEXT_PUBLIC_APP_URL=https://abcd-1234.ngrok-free.app
 https://abcd-1234.ngrok-free.app/api/auth/callback
 ```
 
-> **Tip:** If you have a paid ngrok plan, you can use a [custom domain](https://ngrok.com/docs/guides/custom-domains/) to avoid updating URLs every time.
+> **Tired of updating URLs every restart?** Two options for a stable URL:
+>
+> **ngrok paid plan ($8/mo)** — Get a fixed domain:
+> ```bash
+> ngrok http 3000 --url=your-name.ngrok-free.app
+> ```
+>
+> **Cloudflare Tunnel (free)** — Requires a domain you manage on Cloudflare:
+> ```bash
+> brew install cloudflared
+> cloudflared tunnel login
+> cloudflared tunnel create intercom-auth
+> cloudflared tunnel route dns intercom-auth intercom-auth.your-domain.com
+> cloudflared tunnel run --url http://localhost:3000 intercom-auth
+> ```
 
 ### 6. Start the dev server
 
